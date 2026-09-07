@@ -37,6 +37,8 @@ def test_L04_api_docs_href_points_to_swagger(logged_in_home):
 def test_L05_featured_events_has_at_least_one_card(logged_in_home):
     """L-05: Featured Events has ≥1 Book Now (stable assert per T-05)."""
     expect(logged_in_home.page.get_by_role("heading", name="Featured Events")).to_be_visible()
+    # Wait for cards to render (count() alone does not wait)
+    expect(logged_in_home.book_now_links().first).to_be_visible(timeout=15000)
     assert logged_in_home.book_now_links().count() >= 1
 
 
