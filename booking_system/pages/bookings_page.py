@@ -10,14 +10,16 @@ class BookingsPage(BasePage):
 
     def clear_all_bookings(self) -> None:
         """Reset sandbox inventory — frees seats for booking tests."""
+        if self.page.get_by_text("No bookings yet").count():
+            return
+
         clear_btn = self.page.get_by_role("button", name="Clear all bookings")
         if clear_btn.count() == 0:
             return
-        if self.page.get_by_text("No bookings yet").count():
-            return
-        with self.page.expect_event("dialog") as dialog_info:
-            clear_btn.click()
-        dialog_info.value.accept()
+
+        # Accept native confirm *during* click (avoid deadlock with expect_dialog after click)
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        clear_btn.click(timeout=15000)
         expect(self.page.get_by_text("No bookings yet")).to_be_visible(timeout=20000)
 
     def expect_booking(self, event_name: str, tickets: int) -> None:
