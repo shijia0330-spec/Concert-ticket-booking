@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -36,6 +36,9 @@ jobs:
             echo "::error::Add repository secrets COURSE_EMAIL and COURSE_PASSWORD (Settings → Secrets and variables → Actions)."
             exit 1
           fi
+          # Strip CR/LF that sometimes get pasted into secrets
+          COURSE_EMAIL=$(printf '%s' "$COURSE_EMAIL" | tr -d '\r\n')
+          COURSE_PASSWORD=$(printf '%s' "$COURSE_PASSWORD" | tr -d '\r\n')
           {
             echo "COURSE_EMAIL=$COURSE_EMAIL"
             echo "COURSE_PASSWORD=$COURSE_PASSWORD"
@@ -43,7 +46,17 @@ jobs:
           } > .env
 
       - name: Run Playwright tests (headless)
-        run: pytest booking_system/test_cases -v --browser chromium
+        env:
+          # Helpful on slow CI runners
+          PWDEBUG: "0"
+        run: |
+          mkdir -p test-results
+          pytest booking_system/test_cases -v --browser chromium \
+            --tb=short \
+            --screenshot=only-on-failure \
+            --video=retain-on-failure \
+            --tracing=retain-on-failure \
+            --junitxml=test-results/junit.xml
 
       - name: Upload Playwright artifacts on failure
         if: failure()

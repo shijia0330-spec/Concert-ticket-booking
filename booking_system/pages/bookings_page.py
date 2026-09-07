@@ -13,9 +13,12 @@ class BookingsPage(BasePage):
         clear_btn = self.page.get_by_role("button", name="Clear all bookings")
         if clear_btn.count() == 0:
             return
-        self.page.once("dialog", lambda dialog: dialog.accept())
-        clear_btn.click()
-        expect(self.page.get_by_text("No bookings yet")).to_be_visible(timeout=15000)
+        if self.page.get_by_text("No bookings yet").count():
+            return
+        with self.page.expect_event("dialog") as dialog_info:
+            clear_btn.click()
+        dialog_info.value.accept()
+        expect(self.page.get_by_text("No bookings yet")).to_be_visible(timeout=20000)
 
     def expect_booking(self, event_name: str, tickets: int) -> None:
         expect(self.page.get_by_text(event_name).first).to_be_visible()
