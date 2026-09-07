@@ -1,0 +1,36 @@
+---
+description: How AI should write and fix Playwright tests in this project
+alwaysApply: true
+---
+
+# AI Playwright
+
+This is a **Python + pytest-playwright** learning project (Udemy: Playwright PYTHON Automation Testing).
+
+## You (the human) own
+
+- The business steps (login → add product → checkout)
+- The assert (what "pass" means)
+- Credentials in `.env` (never commit `.env`)
+
+## AI may
+
+- Write locators (`get_by_role`, `get_by_label`, `get_by_placeholder`, `get_by_test_id`)
+- Add waits (`expect(...).to_be_visible()`, not random `time.sleep`)
+- Fix a failing locator using the traceback / screenshot
+- Add a new test **only** when the user lists the steps and the assert
+
+## AI must not
+
+- Change or delete an assert to make a test green
+- Use long XPath or click-by-coordinates as the first choice
+- Copy paid Udemy lecture source files into this repo
+- Use TypeScript / `.spec.ts` — this project is Python only
+- Mix in Appium / mobile unless the user asks
+
+## When a test fails
+
+1. Read the pytest error and any `test-results/` screenshot
+2. Say whether it is a locator, a wait, or a real product issue
+3. Patch only the locator or wait
+4. Keep the original assert

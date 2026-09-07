@@ -1,0 +1,261 @@
+{
+  "meta": {
+    "app": "EventHub",
+    "base_url": "https://api.eventhub.rahulshettyacademy.com",
+    "source": "01_测试用例生成.md (H/E/X/P/S)",
+    "auth": {
+      "type": "bearer",
+      "login_path": "/api/auth/login",
+      "credentials_from": ".env COURSE_EMAIL / COURSE_PASSWORD"
+    }
+  },
+  "notes": [
+    "OpenAPI/Swagger URL not found on public paths; cases drafted from live route probes + UI flows.",
+    "Valid login body uses env placeholders — do not hardcode real passwords in cases.",
+    "GET /api/events returns 401 without Authorization (confirmed)."
+  ],
+  "open_questions": [
+    "Exact success JSON shape for POST /api/auth/login (token field path: token vs data.token)?",
+    "Full booking CRUD paths (POST /api/bookings body schema)?",
+    "Official OpenAPI/Swagger URL for EventHub?",
+    "Expected error code/message for wrong password vs unknown user?"
+  ],
+  "cases": [
+    {
+      "id": "EH-API-LOGIN-H-001",
+      "layer": "H",
+      "title": "Login with valid credentials succeeds",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [
+        "Valid EventHub account exists",
+        "COURSE_EMAIL and COURSE_PASSWORD set in project .env"
+      ],
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      "json_body": {
+        "email": "${COURSE_EMAIL}",
+        "password": "${COURSE_PASSWORD}"
+      },
+      "expect_status": 200,
+      "expect": [
+        "success is true OR response contains access token",
+        "token field present (confirm exact path during script gen)"
+      ],
+      "extract_vars": {
+        "token": "$.token|$.data.token|$.accessToken"
+      },
+      "teardown": "none"
+    },
+    {
+      "id": "EH-API-EVENTS-H-002",
+      "layer": "H",
+      "title": "List events with valid token",
+      "method": "GET",
+      "path": "/api/events",
+      "preconditions": [
+        "Depends on EH-API-LOGIN-H-001 — Authorization Bearer ${token}"
+      ],
+      "depends_on": ["EH-API-LOGIN-H-001"],
+      "headers": {
+        "Authorization": "Bearer ${token}",
+        "Accept": "application/json"
+      },
+      "json_body": null,
+      "expect_status": 200,
+      "expect": [
+        "response is a list or { data: [] } of events",
+        "at least one event has id/name/title field (confirm schema)"
+      ],
+      "teardown": "none"
+    },
+    {
+      "id": "EH-API-LOGIN-E-001",
+      "layer": "E",
+      "title": "Login rejects password shorter than 6 chars",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [],
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json_body": {
+        "email": "invalid@example.com",
+        "password": "123"
+      },
+      "expect_status": 400,
+      "expect": [
+        "success == false",
+        "error mentions validation",
+        "details include field password / min length message"
+      ],
+      "teardown": "none",
+      "review_required": true
+    },
+    {
+      "id": "EH-API-LOGIN-E-002",
+      "layer": "E",
+      "title": "Login rejects empty JSON body",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [],
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json_body": {},
+      "expect_status": 400,
+      "expect": [
+        "success == false",
+        "validation error for missing email and/or password"
+      ],
+      "teardown": "none",
+      "review_required": true
+    },
+    {
+      "id": "EH-API-LOGIN-E-003",
+      "layer": "E",
+      "title": "Login rejects malformed email",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [],
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json_body": {
+        "email": "not-an-email",
+        "password": "abcdef"
+      },
+      "expect_status": 400,
+      "expect": [
+        "success == false",
+        "validation error related to email format (confirm message)"
+      ],
+      "teardown": "none",
+      "review_required": true
+    },
+    {
+      "id": "EH-API-LOGIN-X-001",
+      "layer": "X",
+      "title": "Login with wrong password is rejected",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [],
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json_body": {
+        "email": "invalid@example.com",
+        "password": "WrongPass1"
+      },
+      "expect_status": [401, 400, 403],
+      "expect": [
+        "success == false",
+        "no access token returned"
+      ],
+      "teardown": "none",
+      "review_required": true,
+      "notes": "Confirm exact status among 401/400/403 against real API before locking script assert."
+    },
+    {
+      "id": "EH-API-EVENTS-X-001",
+      "layer": "X",
+      "title": "List events without token returns 401",
+      "method": "GET",
+      "path": "/api/events",
+      "preconditions": ["No Authorization header"],
+      "headers": {
+        "Accept": "application/json"
+      },
+      "json_body": null,
+      "expect_status": 401,
+      "expect": [
+        "success == false",
+        "error indicates Unauthorized"
+      ],
+      "teardown": "none"
+    },
+    {
+      "id": "EH-API-EVENTS-X-002",
+      "layer": "X",
+      "title": "List events with garbage token returns 401",
+      "method": "GET",
+      "path": "/api/events",
+      "preconditions": [],
+      "headers": {
+        "Authorization": "Bearer not-a-real-token",
+        "Accept": "application/json"
+      },
+      "json_body": null,
+      "expect_status": 401,
+      "expect": [
+        "success == false",
+        "no events payload returned"
+      ],
+      "teardown": "none",
+      "review_required": true
+    },
+    {
+      "id": "EH-API-LOGIN-P-001",
+      "layer": "P",
+      "title": "Valid login responds within 3s (sanity)",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "preconditions": [
+        "COURSE_EMAIL and COURSE_PASSWORD set in .env"
+      ],
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json_body": {
+        "email": "${COURSE_EMAIL}",
+        "password": "${COURSE_PASSWORD}"
+      },
+      "expect_status": 200,
+      "expect": [
+        "response_time < 3000ms"
+      ],
+      "teardown": "none",
+      "notes": "Rough latency sanity only — not a load test."
+    },
+    {
+      "id": "EH-API-EVENTS-S-001",
+      "layer": "S",
+      "title": "Anonymous cannot list events (auth sanity)",
+      "method": "GET",
+      "path": "/api/events",
+      "preconditions": ["Anonymous session"],
+      "headers": {
+        "Accept": "application/json"
+      },
+      "json_body": null,
+      "expect_status": 401,
+      "expect": [
+        "success == false"
+      ],
+      "teardown": "none",
+      "notes": "Low-cost security sanity; overlaps X but kept for S checklist."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "EH-API-SCEN-LOGIN-EVENTS-001",
+      "title": "Login then list events (ordered)",
+      "steps": [
+        {
+          "ref": "EH-API-LOGIN-H-001",
+          "capture": {
+            "token": "$.token|$.data.token|$.accessToken"
+          }
+        },
+        {
+          "ref": "EH-API-EVENTS-H-002",
+          "headers": {
+            "Authorization": "Bearer ${token}"
+          }
+        }
+      ]
+    }
+  ]
+}
